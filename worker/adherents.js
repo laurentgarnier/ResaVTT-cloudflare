@@ -25,14 +25,15 @@ function nettoyer(bruts) {
   })).filter((a) => a.nom && a.telephone);
 }
 
-export async function adherentsPourRequete(env, requete) {
+// forcer : relire la passerelle quel que soit l'âge du cache (tic), le cache ne servant qu'en cas de panne.
+export async function adherentsPourRequete(env, requete, { forcer = false } = {}) {
   const maintenant = (env.maintenant ? env.maintenant() : new Date()).getTime();
   let cache = null;
   try { cache = JSON.parse(await env.TRACES.get(CLE)); } catch (e) { cache = null; }
   const age = cache ? maintenant - cache.lu_a : Infinity;
   const telephone = requete && requete.action === 'connexion' ? normaliserTelephone(String(requete.telephone || '')) : '';
   const inconnu = !!(telephone && cache && !cache.liste.some((a) => a.telephone === telephone));
-  const aRelire = !cache || age > DUREE_CACHE_ADHERENTS_MS || (inconnu && age > RELECTURE_MIN_MS);
+  const aRelire = forcer || !cache || age > DUREE_CACHE_ADHERENTS_MS || (inconnu && age > RELECTURE_MIN_MS);
   if (!aRelire) return cache.liste;
   try {
     const liste = nettoyer(await env.passerelle.adherents());

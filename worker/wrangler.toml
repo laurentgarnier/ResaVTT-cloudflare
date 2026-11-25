@@ -1,0 +1,19 @@
+# Worker de l'essai Cloudflare (API de l'appli des sorties).
+# Les identifiants de la base D1 et de l'espace KV sont remplis à la création (docs/ESSAI-CLOUDFLARE.md).
+# Pas de [triggers] : le compte n'a plus de Cron Trigger libre ; le tic est appelé par la passerelle Apps Script.
+# Secret à poser une fois : npx wrangler secret put SECRET_PASSERELLE -c worker/wrangler.toml
+name = "resavtt-essai"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "resavtt-essai"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[kv_namespaces]]
+binding = "TRACES"
+id = "00000000000000000000000000000000"
+
+[vars]
+URL_PASSERELLE = ""
