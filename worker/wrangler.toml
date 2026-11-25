@@ -16,7 +16,7 @@ binding = "TRACES"
 id = "cf89fa25623b4fdb975ae5c733a3b2f7"
 
 [vars]
-URL_PASSERELLE = ""
+URL_PASSERELLE = "https://script.google.com/macros/s/AKfycbx88BkLoEPrXvycOvjrOly2JUArs76cw4kJ1m_lFMCZNjyD-73YxytrClNcy88mN9Fi8A/exec"
 
 # Une seule instance traite les requêtes POST une par une (comme le verrou du script sur Google).
 [[durable_objects.bindings]]
