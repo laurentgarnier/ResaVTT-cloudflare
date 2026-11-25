@@ -10,6 +10,8 @@
     "installer": "node outils/installer.js",
     "icones": "powershell -NoProfile -ExecutionPolicy Bypass -File outils/generer-icones.ps1",
     "cf:demo": "node outils/cf-donnees.js demo",
-    "cf:vierge": "node outils/cf-donnees.js vierge"
+    "cf:vierge": "node outils/cf-donnees.js vierge",
+    "cf:site": "npx --yes wrangler@4 deploy -c wrangler.jsonc",
+    "cf:deployer": "npx --yes wrangler@4 deploy -c worker/wrangler.toml"
   }
 }

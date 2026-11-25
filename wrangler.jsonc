@@ -1,0 +1,9 @@
+// Site de l'essai Cloudflare : fichiers statiques du dossier site/ (Pages, désormais servi comme un Worker de fichiers).
+// Publier : npm run cf:site. L'API est un autre Worker (worker/wrangler.toml).
+{
+  "name": "resavtt-essai-site",
+  "compatibility_date": "2026-11-23",
+  "assets": {
+    "directory": "site"
+  }
+}
