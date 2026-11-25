@@ -22,3 +22,9 @@ Conception : `docs/superpowers/specs/2026-11-25-essai-cloudflare-design.md`. Pla
 
 ## Vérifier
 - `curl <worker>/` → `API Sorties VTT : OK` ; `node outils/mesurer.js <worker> 0600000002` (faux adhérent).
+
+## Repartir sans sorties paramétrées
+`npm run cf:repartir` (demande de taper « oui ») vide les sorties, inscriptions, discussions, traces GPX (fichiers KV
+compris), récurrences et leurs créneaux, fermetures, rappels groupés, envois, journal et statistiques. Sont gardés :
+l'onglet Paramètres, les textes des messages et les comptes (personne n'est déconnecté). Ensuite, les récurrences se
+recréent dans ⚙ Admin → Récurrences.

@@ -40,3 +40,20 @@ test('SQL des données vierges : relu à l\'identique ; rechargé par-dessus, re
 test("la liste des adhérents n'est pas écrite dans D1 (elle vient de la passerelle)", () => {
   assert.doesNotMatch(sqlDonnees(creerDonneesDemo('2026-11-12', PORTEUR)), /Adherents|adherents/);
 });
+
+test('repartir : sorties, récurrences, rappels, inscriptions, traces et historique vidés ; paramètres, textes et comptes gardés', async () => {
+  const { sqlRepartir, TABLES_GARDEES } = await import('../outils/cf-donnees.js');
+  assert.deepEqual([...TABLES_GARDEES].sort(), ['Jetons', 'Modeles', 'Parametres', 'Personnes']);
+  const d = creerDonneesDemo('2026-11-12', PORTEUR);
+  d.tables.Parametres.find((p) => p.cle === 'nom_appli').valeur = 'Corbas VTT';
+  d.tables.Modeles[0].valeur = 'Texte réglé par l\'admin';
+  const db = await verifierRelecture(d);
+  await db.exec(sqlRepartir());
+  const relu = await chargerTables(db, ONGLETS_TOUS);
+  for (const o of ONGLETS_TOUS) {
+    if (TABLES_GARDEES.includes(o)) assert.equal(relu[o].length, d.tables[o].length, `${o} gardé`);
+    else assert.equal(relu[o].length, 0, `${o} vidé`);
+  }
+  assert.equal(relu.Parametres.find((p) => p.cle === 'nom_appli').valeur, 'Corbas VTT');
+  assert.equal(relu.Modeles[0].valeur, 'Texte réglé par l\'admin');
+});
