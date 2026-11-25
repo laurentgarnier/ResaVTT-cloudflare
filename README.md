@@ -1,4 +1,6 @@
-# Sorties VTT
+# Sorties VTT — essai Cloudflare
+
+> **Dépôt d'essai.** Même appli, avec le serveur et les données sur Cloudflare (Worker, D1, KV, Pages) ; la liste des adhérents et les mails restent chez Google, par une passerelle Apps Script. L'appli en service est dans le dépôt **ResaVTT**. Conception : [docs/superpowers/specs/2026-11-25-essai-cloudflare-design.md](docs/superpowers/specs/2026-11-25-essai-cloudflare-design.md).
 
 Application d'inscription aux sorties du club : une appli web installable sur téléphone (PWA, hébergée sur GitHub Pages) et un petit serveur Google Apps Script qui stocke les données dans un Google Sheet et envoie les mails.
 
