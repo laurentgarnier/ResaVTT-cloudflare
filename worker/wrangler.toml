@@ -9,11 +9,11 @@ compatibility_date = "2026-11-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "resavtt-essai"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "1f0892ca-8341-4c99-8468-98069aad2193"
 
 [[kv_namespaces]]
 binding = "TRACES"
-id = "00000000000000000000000000000000"
+id = "cf89fa25623b4fdb975ae5c733a3b2f7"
 
 [vars]
 URL_PASSERELLE = ""
