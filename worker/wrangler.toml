@@ -17,3 +17,12 @@ id = "00000000000000000000000000000000"
 
 [vars]
 URL_PASSERELLE = ""
+
+# Une seule instance traite les requêtes POST une par une (comme le verrou du script sur Google).
+[[durable_objects.bindings]]
+name = "VERROU"
+class_name = "VerrouSorties"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["VerrouSorties"]

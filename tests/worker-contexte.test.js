@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { creerEnvFactice } from './aides/cloudflare-factice.js';
 import { contexteTest } from './aides/contexte-test.js';
-import { executer } from '../worker/contexte.js';
+import { executer, MAX_PASSES } from '../worker/contexte.js';
 import { chargerTables } from '../worker/depot-d1.js';
 import { sha256Hex } from '../worker/crypto.js';
 import { traiter } from '../backend/noyau/actions.js';
@@ -79,7 +79,7 @@ test("passerelle en panne à l'envoi d'un mail : la requête répond, une ligne 
   assert.ok(journal.some((l) => l.type === 'envoi' && /passerelle injoignable/.test(l.detail)), JSON.stringify(journal));
 });
 
-test('plus de 4 passes : erreur technique, rien n\'est écrit', async () => {
+test('trop de passes : erreur technique, rien n\'est écrit', async () => {
   const env = await creerEnvFactice();
   let n = 0;
   const r = await executer(env, (ctx) => {
@@ -89,6 +89,6 @@ test('plus de 4 passes : erreur technique, rien n\'est écrit', async () => {
     return 'jamais';
   }, { adherents: env.adherents });
   assert.equal(r.erreur, 'erreur_interne');
-  assert.equal(n, 4);
+  assert.equal(n, MAX_PASSES);
   assert.ok(!(await chargerTables(env.DB, ['Personnes'])).Personnes.some((p) => String(p.id).startsWith('x')));
 });

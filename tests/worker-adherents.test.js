@@ -67,3 +67,26 @@ test('client de la passerelle : enveloppe { h, s, c } signée, vérifiable ; ré
   const enEchec = creerPasserelle({ url: 'u', secret: 's', fetchImpl: async () => ({ json: async () => ({ ok: false, erreur: 'refuse', message: 'Refusé' }) }) });
   await assert.rejects(enEchec.mail({ to: 'a@b', subject: 'x', body: 'y' }), /Refusé/);
 });
+
+test("I4 : écriture KV impossible (quota) — la liste fraîche sert quand même, et la relecture reste limitée à une par minute", async () => {
+  const e = env({ cache: { lu_a: 10_000_000 - DUREE_CACHE_ADHERENTS_MS - 1, liste: [] } });
+  e.TRACES.put = async () => { throw new Error('KV : quota quotidien atteint'); };
+  const memoire = {};
+  const liste = await adherentsPourRequete(e, { action: 'calendrier' }, { memoire });
+  assert.equal(liste.length, 2, 'liste fraîche, pas l\'ancienne');
+  await adherentsPourRequete(e, { action: 'connexion', telephone: '0699999999' }, { memoire });
+  await adherentsPourRequete(e, { action: 'calendrier' }, { memoire });
+  assert.equal(e.passerelle.appels, 1, 'gardée en mémoire : pas de nouvel appel');
+});
+
+test("I4 : liste inchangée à la relecture — aucune écriture KV", async () => {
+  const e = env({ cache: { lu_a: 10_000_000 - DUREE_CACHE_ADHERENTS_MS - 1, liste: [] } });
+  const memoire = {};
+  await adherentsPourRequete(e, { action: 'calendrier' }, { memoire });
+  let ecritures = 0;
+  const put = e.TRACES.put;
+  e.TRACES.put = async (...a) => { ecritures++; return put(...a); };
+  await adherentsPourRequete(e, { action: 'tic' }, { memoire, forcer: true });
+  assert.equal(e.passerelle.appels, 2);
+  assert.equal(ecritures, 0);
+});

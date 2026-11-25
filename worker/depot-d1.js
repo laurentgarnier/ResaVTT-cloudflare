@@ -54,16 +54,20 @@ export async function chargerTables(db, onglets) {
   return tables;
 }
 
-export function creerDepotEnregistreur(tablesInitiales) {
+// absente(onglet) : appelé quand le noyau lit, modifie ou supprime dans une table non chargée (chargement à la
+// demande : le contexte note le besoin et rejoue). Ajouter dans une table non chargée reste possible (Journal).
+export function creerDepotEnregistreur(tablesInitiales, { absente = null } = {}) {
   const t = {};
   for (const [o, lignes] of Object.entries(tablesInitiales)) t[o] = lignes.map((l) => ({ ...l }));
+  const chargees = new Set(Object.keys(tablesInitiales));
   const table = (o) => (t[o] ||= []);
+  const exiger = (o) => { if (absente && !chargees.has(o)) absente(o); };
   const nouvelles = new Set(); // lignes ajoutées pendant la requête (pas encore de _rid)
   const misesAJour = new Map(); // `${onglet}#${_rid}` → { onglet, _rid, champs }
   const suppressions = [];
 
   return {
-    lire: (o) => table(o).map((l) => ({ ...l })),
+    lire: (o) => { exiger(o); return table(o).map((l) => ({ ...l })); },
     ajouter: (o, objets) => {
       for (const obj of objets) {
         const { _rid, ...ligne } = obj;
@@ -72,6 +76,7 @@ export function creerDepotEnregistreur(tablesInitiales) {
       }
     },
     modifier: (o, filtre, champs) => {
+      exiger(o);
       let n = 0;
       for (const l of table(o)) {
         if (!filtre(l)) continue;
@@ -85,6 +90,7 @@ export function creerDepotEnregistreur(tablesInitiales) {
       return n;
     },
     supprimer: (o, filtre) => {
+      exiger(o);
       const gardees = [];
       let n = 0;
       for (const l of table(o)) {

@@ -4,10 +4,12 @@ import { DatabaseSync } from 'node:sqlite';
 
 export function creerD1Factice() {
   const base = new DatabaseSync(':memory:');
-  const stats = { batch: 0, requetes: 0 };
+  const stats = { batch: 0, requetes: 0, tablesLues: [] };
   const plat = (lignes) => lignes.map((l) => ({ ...l }));
   const executer = (sql, valeurs) => {
     stats.requetes++;
+    const lue = /^SELECT \* FROM "([^"]+)"/.exec(sql);
+    if (lue) stats.tablesLues.push(lue[1]);
     const st = base.prepare(sql);
     if (st.columns().length) return { results: plat(st.all(...valeurs)), success: true, meta: {} };
     const r = st.run(...valeurs);
