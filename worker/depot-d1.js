@@ -12,16 +12,19 @@ export const ONGLETS_TOUS = Object.keys(ONGLETS);
 // Journal et Bilan ne servent qu'à la purge et aux statistiques : pas lus par une requête ordinaire.
 export const ONGLETS_REQUETE = ONGLETS_TOUS.filter((o) => o !== 'Journal' && o !== 'Bilan');
 
-const nom = (identifiant) => `"${String(identifiant).replace(/"/g, '""')}"`;
-const colonnes = (onglet) => ONGLETS[onglet] || [];
+export const nom = (identifiant) => `"${String(identifiant).replace(/"/g, '""')}"`;
+export const colonnes = (onglet) => ONGLETS[onglet] || [];
 
 const schemasAssures = new WeakSet();
 
+// Création des tables (sans effet sur une table existante) : sert au Worker et au chargement des données d'essai.
+export function instructionsCreation() {
+  return ONGLETS_TOUS.map((o) => `CREATE TABLE IF NOT EXISTS ${nom(o)} (_rid INTEGER PRIMARY KEY, ${colonnes(o).map((c) => `${nom(c)} TEXT`).join(', ')})`);
+}
+
 export async function assurerSchema(db) {
   if (schemasAssures.has(db)) return;
-  await db.batch(ONGLETS_TOUS.map((o) => db.prepare(
-    `CREATE TABLE IF NOT EXISTS ${nom(o)} (_rid INTEGER PRIMARY KEY, ${colonnes(o).map((c) => `${nom(c)} TEXT`).join(', ')})`,
-  )));
+  await db.batch(instructionsCreation().map((sql) => db.prepare(sql)));
   const infos = await db.batch(ONGLETS_TOUS.map((o) => db.prepare(`PRAGMA table_info(${nom(o)})`)));
   const ajouts = [];
   ONGLETS_TOUS.forEach((o, i) => {
