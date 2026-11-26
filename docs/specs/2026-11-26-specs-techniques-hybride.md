@@ -16,21 +16,36 @@ place pas à pas : `docs/ESSAI-CLOUDFLARE.md` ; mesures : `docs/ESSAI-CLOUDFLARE
 
 ## 2. Vue d'ensemble
 
-```
- Téléphone / PC (PWA)                       Cloudflare                                   Google
- ───────────────────                        ──────────                                   ──────
- site/sorties (statique) ──POST JSON──▶ Worker « resavtt-essai »
-   servi par :                              │  Durable Object VerrouSorties
-   - Worker de fichiers                     │  (une requête à la fois,
-     « resavtt-essai-site »                 │   liste des adhérents en mémoire)
-   - GitHub Pages (démo ResaVTT)            │        │
-                                            │        ├── D1 « resavtt-essai » : toutes les données
-                                            │        ├── KV « resavtt-essai-traces » : fichiers GPX,
-                                            │        │     copie de secours de la liste des adhérents
-                                            │        └── passerelle (HTTPS signé) ──────▶ Apps Script autonome
-                                            │                                              ├─ lit le Sheet Adhérents
-                                            ◀──── POST /tic signé, toutes les heures ──────┤  (ADHERENTS_ID)
-                                                                                           └─ envoie les mails (MailApp)
+```mermaid
+flowchart LR
+  subgraph Appareil["Téléphone / PC"]
+    PWA["Appli PWA<br/>site/sorties"]
+  end
+  subgraph Hebergement["Hébergement du site"]
+    SITE["Worker de fichiers<br/>resavtt-essai-site"]
+    GHP["GitHub Pages<br/>(démo ResaVTT)"]
+  end
+  subgraph CF["Cloudflare"]
+    W["Worker API<br/>resavtt-essai"]
+    DO["Durable Object<br/>VerrouSorties<br/>une requête à la fois,<br/>adhérents en mémoire"]
+    D1[("D1<br/>resavtt-essai<br/>toutes les données")]
+    KV[("KV<br/>resavtt-essai-traces<br/>GPX + copie des adhérents")]
+  end
+  subgraph G["Google"]
+    PASS["Passerelle<br/>Apps Script autonome"]
+    SHEET[("Google Sheet<br/>Adhérents<br/>ADHERENTS_ID")]
+    MAIL["MailApp"]
+  end
+  SITE -. fichiers statiques .-> PWA
+  GHP -. fichiers statiques .-> PWA
+  PWA -- "POST JSON (actions)" --> W
+  W --> DO
+  DO --> D1
+  DO --> KV
+  DO -- "adherents_lire, mail_envoyer<br/>(HTTPS signé)" --> PASS
+  PASS --> SHEET
+  PASS --> MAIL
+  PASS -- "POST /tic signé<br/>toutes les heures" --> W
 ```
 
 | Élément | Où | Rôle |
@@ -74,6 +89,21 @@ place pas à pas : `docs/ESSAI-CLOUDFLARE.md` ; mesures : `docs/ESSAI-CLOUDFLARE
   (au plus une par minute) : un adhérent ajouté au fichier peut se connecter tout de suite.
 - **Conséquence** : un changement sur un adhérent déjà connu (passage administrateur, nouvel email, désactivation)
   est vu **au plus 1 heure** après. Le tic relit toujours la liste à la source (`forcer`), pour la purge.
+```mermaid
+flowchart TD
+  R["Requête reçue"] --> F{"Tic ?"}
+  F -- oui --> P["Relire la passerelle"]
+  F -- non --> M{"Liste en mémoire<br/>de moins d'1 h ?"}
+  M -- non --> P
+  M -- oui --> I{"Connexion d'un<br/>numéro inconnu ?"}
+  I -- "oui (au plus 1 fois/min)" --> P
+  I -- non --> U["Utiliser la liste en mémoire"]
+  P -- réussi --> E["Mettre à jour la mémoire<br/>(et KV si la liste a changé)"] --> U
+  P -- échec --> S{"Liste en mémoire ou KV<br/>et numéro connu ?"}
+  S -- oui --> U2["Utiliser la liste périmée"]
+  S -- non --> X["service_indisponible"]
+```
+
 - **Passerelle en panne** : la liste en mémoire, ou à défaut celle de KV, sert même périmée ; sans aucune liste,
   ou pour un numéro absent de la liste en cache, l’API répond `service_indisponible`.
 
@@ -93,6 +123,28 @@ Le noyau est synchrone, Cloudflare est asynchrone. `executer(env, travail, {ongl
    écrire : table pas encore lue, réponse HTTP (météo, géocodage), contenu d'un GPX dans KV, **envoi d'un mail** ;
 3. les besoins sont satisfaits (lecture D1, `fetch`, KV, mail par la passerelle), puis on rejoue sur un état neuf ;
 4. la dernière passe, sans besoin, applique ses effets : écritures KV, lot D1, suppressions KV.
+
+Exemple : demande du code d'accès administrateur (une table manquante, puis un mail).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as Appli
+  participant DO as Durable Object
+  participant N as Noyau (passe)
+  participant D1 as D1
+  participant P as Passerelle
+  A->>DO: POST admin_code_demander
+  DO->>D1: lire les tables de l'action (un lot)
+  DO->>N: passe 1
+  N-->>DO: besoin : mail « code »
+  DO->>P: mail_envoyer (signé)
+  P-->>DO: ok
+  DO->>N: passe 2 (même heure, mêmes uuid)
+  N-->>DO: terminé, écritures enregistrées
+  DO->>D1: écritures en un seul lot
+  DO-->>A: { ok: true }
+```
 
 Les passes sont **déterministes** : même heure (`maintenant`) et mêmes identifiants (`uuid`) d'une passe à l'autre,
 pour qu'un mail envoyé (un code d'accès, par exemple) corresponde à ce qui est finalement enregistré. Un mail qui a
@@ -146,6 +198,24 @@ Portée OAuth : `spreadsheets` complète (la lecture seule ne suffit pas à `ope
 ## 7. Tâches automatiques
 - **Pas de Cron Trigger Cloudflare** : les 5 du compte gratuit sont pris par une autre appli. Le déclencheur horaire
   Apps Script appelle `POST /tic`.
+```mermaid
+sequenceDiagram
+  participant T as Déclencheur horaire (Google)
+  participant P as Passerelle
+  participant W as Worker /tic
+  participant D1 as D1 + KV
+  T->>P: ticHoraire()
+  P->>W: POST /tic (enveloppe signée)
+  W->>W: vérifier signature (± 5 min)
+  W->>P: adherents_lire (forcé)
+  P-->>W: liste du Sheet
+  W->>D1: lire les tables (Bilan compris)
+  W->>W: ticNoyau : récurrences, rappels, annulations, purge
+  W->>P: mail_envoyer (rappels, annulations)
+  W->>D1: écritures en un lot
+  W-->>P: { ok: true }
+```
+
 - Le tic relit la liste des adhérents à la source puis exécute `ticNoyau` (récurrences, rappels individuels et
   groupés, annulations, purge, anonymisation de la remorque), avec Bilan chargé. Règles identiques à la spec technique
   d'origine (§7).
