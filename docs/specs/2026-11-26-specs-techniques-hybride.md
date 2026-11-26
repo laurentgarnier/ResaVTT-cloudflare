@@ -75,7 +75,7 @@ place pas à pas : `docs/ESSAI-CLOUDFLARE.md` ; mesures : `docs/ESSAI-CLOUDFLARE
 - **Conséquence** : un changement sur un adhérent déjà connu (passage administrateur, nouvel email, désactivation)
   est vu **au plus 1 heure** après. Le tic relit toujours la liste à la source (`forcer`), pour la purge.
 - **Passerelle en panne** : la liste en mémoire, ou à défaut celle de KV, sert même périmée ; sans aucune liste,
-  l'API répond `service_indisponible`.
+  ou pour un numéro absent de la liste en cache, l’API répond `service_indisponible`.
 
 ## 4. Exécution d'une requête
 
